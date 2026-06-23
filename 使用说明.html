@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主页编辑器 · 使用说明</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;background:#eef1f3;color:#1f2b32;line-height:1.75;padding:32px 16px;}
+  .doc{max-width:720px;margin:0 auto;background:#fff;border-radius:18px;padding:44px 40px;box-shadow:0 8px 40px rgba(0,0,0,.08);}
+  h1{font-size:30px;color:#0f4c81;margin-bottom:8px;}
+  .sub{color:#6a7780;font-size:15px;margin-bottom:32px;font-weight:600;}
+  h2{font-size:20px;color:#0f4c81;margin:34px 0 14px;padding-bottom:8px;border-bottom:2px solid #e3e9ef;}
+  h3{font-size:16px;color:#16242b;margin:18px 0 6px;}
+  p{margin:8px 0;}
+  ul{margin:8px 0 8px 4px;list-style:none;}
+  li{margin:7px 0;padding-left:22px;position:relative;}
+  li::before{content:"▪";color:#0f4c81;position:absolute;left:4px;font-weight:700;}
+  .step{background:#f4f7fa;border-left:4px solid #0f4c81;border-radius:8px;padding:14px 18px;margin:12px 0;}
+  .step b{color:#0f4c81;}
+  .tip{background:#fff8e8;border:1px solid #f0e0b8;border-radius:8px;padding:12px 16px;margin:14px 0;font-size:14px;color:#6b5320;}
+  .btn{display:inline-block;background:#0f4c81;color:#fff;border-radius:7px;padding:2px 10px;font-size:13px;font-weight:700;margin:0 2px;}
+  .key{background:#eef3f5;border:1px solid #dde6e9;border-radius:6px;padding:1px 8px;font-size:13px;font-weight:700;color:#0f4c81;}
+  .warn{background:#fdeeed;border:1px solid #f3c9c5;border-radius:8px;padding:14px 18px;margin:16px 0;color:#9a3b32;font-weight:600;}
+  .qa{margin:10px 0;}
+  .qa .q{font-weight:700;color:#16242b;}
+  .qa .a{color:#4a5961;margin-top:2px;}
+  .footer{margin-top:38px;padding-top:18px;border-top:1px solid #e3e9ef;color:#9aa6ad;font-size:13px;text-align:center;}
+  @media(max-width:520px){.doc{padding:28px 22px;}h1{font-size:24px;}}
+</style>
+</head>
+<body>
+<div class="doc">
+  <h1>主页编辑器 · 使用说明</h1>
+  <p class="sub">一个单文件网页编辑器，用来制作和修改个人 / 公司主页卡片，可导出网页或高清图片，用于朋友圈、小红书、微信群、官网等。</p>
+
+  <h2>一、怎么打开</h2>
+  <div class="step">
+    <p><b>1.</b> 把 <span class="key">index.html</span> 下载到电脑。</p>
+    <p><b>2.</b> <b>双击</b>它，会用浏览器打开（推荐 Chrome 或 Edge）。</p>
+    <p><b>3.</b> 打开后直接编辑，不用装软件，也不用懂代码。</p>
+  </div>
+  <div class="tip">💡 编辑和「导出网页」完全离线可用；只有「导出高清图片」需要联网。</div>
+
+  <h2>二、基本操作</h2>
+  <p>整个页面由一块块「积木」拼成（头部、数据、客户墙、合作步骤、联系卡片等）。</p>
+  <h3>改文字</h3>
+  <p>鼠标点任意文字，直接打字修改。</p>
+  <h3>换图片</h3>
+  <p>鼠标移到图片上，出现工具条：</p>
+  <ul>
+    <li><span class="key">➖</span> 缩小 ／ <span class="key">➕</span> 放大</li>
+    <li><span class="key">⬭</span> 圆形 / 方角切换</li>
+    <li><span class="key">📷</span> 换图片（上传你电脑里的图）</li>
+  </ul>
+  <h3>调整积木块</h3>
+  <p>鼠标移到某块上，右上角出现：</p>
+  <ul>
+    <li><span class="key">⬆</span> 上移 ／ <span class="key">⬇</span> 下移</li>
+    <li><span class="key">⧉</span> 复制 ／ <span class="key">✕</span> 删除</li>
+  </ul>
+  <h3>加新积木</h3>
+  <p>点顶部或底部 <span class="btn">＋ 添加积木</span>，可选：圆形 Logo、图片、标题、文字段落、标签组、数据格、客户墙、步骤流程、联系卡片、分隔线、页脚等。</p>
+
+  <h2>三、联系卡片 · 加二维码</h2>
+  <p>在「联系我们」卡片里，右侧有三个快捷按钮：</p>
+  <ul>
+    <li><span class="btn">＋ 微信二维码</span> 加一个二维码位（默认说明「微信扫码」）</li>
+    <li><span class="btn">＋ 飞书二维码</span> 加一个二维码位（默认说明「飞书扫码」）</li>
+    <li><span class="btn">＋ 其他图片</span> 加任意图片（如公众号码、小程序码）</li>
+  </ul>
+  <p>每个二维码：点 <span class="key">📷</span> 上传真实二维码图、用 <span class="key">➖➕</span> 调大小、下方说明文字可点改、右上角 <span class="key">✕</span> 删除。多个二维码自动并排。</p>
+
+  <h2>四、改颜色和字体</h2>
+  <p>点顶部 <span class="btn">🎨 颜色 / 字体</span>，可调：</p>
+  <ul>
+    <li><b>主题色</b>：8 个预设 + 自定义取色器（改一个色，整站配色自动联动）</li>
+    <li><b>背景调</b>：冷灰 / 米白 / 纯白 / 浅绿 / 深色</li>
+    <li><b>字体</b>：黑体 / 宋体 / 楷体 / 圆体 / 等宽</li>
+  </ul>
+
+  <h2>五、保存成果（重要）</h2>
+  <div class="warn">⚠️ 修改是在打开的网页里实时进行的，刷新或关闭页面会丢失。改完一定要导出保存！</div>
+  <p><span class="btn">⬇ 导出网页</span> 下载一个干净的 <span class="key">.html</span> 文件（不带编辑按钮）。可直接发给别人看，或以后用「📂 导入已有页面」重新载入接着改。</p>
+  <p><span class="btn">🖼️ 导出高清图片</span> 下载一张 3 倍分辨率 PNG，适合发朋友圈、小红书、群、打印。（需联网）</p>
+
+  <h2>六、接着上次的继续改</h2>
+  <div class="step">
+    <p><b>1.</b> 打开本编辑器</p>
+    <p><b>2.</b> 点顶部 <span class="btn">📂 导入已有页面</span></p>
+    <p><b>3.</b> 选中你之前导出的 <span class="key">.html</span> 文件</p>
+    <p><b>4.</b> 所有内容、图片、配色恢复成可编辑状态，接着改即可</p>
+  </div>
+
+  <h2>常见问题</h2>
+  <div class="qa"><div class="q">Q：双击没反应 / 显示乱码？</div><div class="a">右键文件 →「打开方式」→ 选 Chrome 或 Edge。</div></div>
+  <div class="qa"><div class="q">Q：导出图片是空白 / 报错？</div><div class="a">确认电脑联网；如果图片是用网址引用的，改成「📷 上传本地图片」即可。</div></div>
+  <div class="qa"><div class="q">Q：能在手机上用吗？</div><div class="a">可以查看，但编辑建议在电脑上操作，体验更好。</div></div>
+
+  <p class="footer">主页编辑器 · 使用说明</p>
+</div>
+</body>
+</html>

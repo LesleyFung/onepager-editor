@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主页编辑器 · 积木式 one-pager</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --bg:#ffffff;--card:#f4f1ea;--card-border:#e6e0d4;
+    --brand:#0f4c81;--brand-dark:#0b3961;--accent:#3a6c98;
+    --text:#16242b;--muted:#6a7780;--pill-bg:#d4dfe8;
+    --logo-cell:#ffffff;--logo-cell-border:#e6ecee;
+    --font:"Kaiti SC","KaiTi","STKaiti",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--font);background:#ece7dd;color:var(--text);line-height:1.5;}
+  .page,.page *{font-family:var(--font);}
+
+  /* ===== 工具栏 ===== */
+  .toolbar{position:sticky;top:0;z-index:100;background:#16242b;color:#fff;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;box-shadow:0 2px 12px rgba(0,0,0,.2);}
+  .toolbar .title{font-weight:800;font-size:15px;margin-right:auto;}
+  .toolbar button{background:var(--brand);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;}
+  .toolbar button:hover{background:var(--accent);}
+  .toolbar button.ghost{background:#37454d;}
+  .toolbar button.ghost:hover{background:#48565e;}
+  .toolbar .hint{font-size:12px;color:#9fb2ba;font-weight:600;width:100%;margin-top:2px;}
+
+  /* ===== 主题面板 ===== */
+  .theme-panel{position:sticky;top:48px;z-index:99;background:#1e2b32;color:#fff;padding:0 18px;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease;border-top:1px solid #2c3a42;}
+  .theme-panel.open{max-height:520px;padding:16px 18px;}
+  .tp-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+  .tp-row:last-child{margin-bottom:0;}
+  .tp-label{font-size:12px;font-weight:800;color:#9fb2ba;width:64px;flex:none;}
+  .swatches{display:flex;gap:8px;flex-wrap:wrap;}
+  .swatch{width:30px;height:30px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:.12s;}
+  .swatch:hover{transform:scale(1.12);}
+  .swatch.active{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35);}
+  .color-pick{display:flex;align-items:center;gap:6px;font-size:12px;color:#9fb2ba;font-weight:600;}
+  .color-pick input[type=color]{width:30px;height:30px;border:none;border-radius:8px;background:none;cursor:pointer;padding:0;}
+  .font-btns{display:flex;gap:8px;flex-wrap:wrap;}
+  .font-btn{background:#37454d;color:#fff;border:1px solid #4a5961;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:.12s;}
+  .font-btn:hover{background:#48565e;}
+  .font-btn.active{background:var(--brand);border-color:var(--brand);}
+
+  .stage{padding:24px 12px 80px;}
+  .page{max-width:640px;margin:0 auto;background:var(--bg);border-radius:24px;padding:30px 28px 28px;box-shadow:0 8px 40px rgba(0,0,0,.08);}
+
+  [contenteditable]{outline:none;border-radius:4px;transition:.12s;cursor:text;}
+  [contenteditable]:hover{background:rgba(31,111,139,.10);box-shadow:0 0 0 2px rgba(31,111,139,.25);}
+  [contenteditable]:focus{background:rgba(31,111,139,.06);box-shadow:0 0 0 2px var(--brand);}
+
+  .img-edit{position:relative;cursor:pointer;}
+  .img-edit::after{content:"📷 换图";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);color:#fff;font-size:12px;font-weight:700;border-radius:inherit;opacity:0;transition:.15s;}
+  .img-edit:hover::after{opacity:1;}
+
+  /* ===== 积木块外框 ===== */
+  .block{position:relative;margin:6px 0;border-radius:14px;transition:.12s;}
+  .block:hover{box-shadow:0 0 0 2px rgba(31,111,139,.30);}
+  .block-tools{position:absolute;top:-14px;right:8px;display:flex;gap:4px;opacity:0;transition:.15s;z-index:10;}
+  .block:hover>.block-tools{opacity:1;}
+  .block-tools button{width:26px;height:26px;border:none;border-radius:7px;background:#16242b;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:.12s;}
+  .block-tools button:hover{background:var(--brand);}
+  .block-tools button.del:hover{background:#d6473d;}
+  .block-label{position:absolute;top:-13px;left:10px;background:var(--brand);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;opacity:0;transition:.15s;z-index:10;}
+  .block:hover>.block-label{opacity:.9;}
+
+  /* ===== 拍照模式：隐藏所有编辑控件 ===== */
+  body.shooting .block-tools,
+  body.shooting .block-label,
+  body.shooting .add-tag,
+  body.shooting .add-stat,
+  body.shooting .add-cell,
+  body.shooting .add-step-in,
+  body.shooting .add-ci,
+  body.shooting .tag-del,
+  body.shooting .cell-del,
+  body.shooting .step-del,
+  body.shooting .ci-del,
+  body.shooting .add-cimg,
+  body.shooting .cimg-add-row,
+  body.shooting .cimg-del,
+  body.shooting .img-bar,
+  body.shooting .cell-tools{display:none !important;}
+  body.shooting .block{box-shadow:none !important;}
+  body.shooting [contenteditable]:hover,
+  body.shooting .img-edit:hover{background:transparent !important;box-shadow:none !important;}
+  body.shooting .img-edit::after{display:none !important;}
+
+  /* ===== 各类积木样式 ===== */
+  /* 可缩放图片组件 */
+  .img-wrap{position:relative;margin:0 auto;max-width:100%;}
+  .img-wrap .wrap-img{width:100%;height:auto;display:block;border-radius:14px;background:#dde7ea;object-fit:contain;}
+  .img-wrap.round .wrap-img{border-radius:50%;aspect-ratio:1/1;object-fit:cover;border:3px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,.12);}
+  .img-bar{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:flex;gap:4px;background:rgba(22,36,43,.9);padding:4px;border-radius:10px;opacity:0;transition:.15s;z-index:5;}
+  .img-wrap:hover .img-bar{opacity:1;}
+  .img-bar button{width:28px;height:28px;border:none;border-radius:7px;background:#37454d;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
+  .img-bar button:hover{background:var(--brand);}
+  .b-logo .img-wrap{margin:0 auto;}
+  .b-image .img-wrap{margin:0 auto;}
+
+  /* 标题 */
+  .b-name{text-align:center;font-size:40px;font-weight:800;letter-spacing:1px;color:var(--brand-dark);padding:6px;}
+  .b-heading{text-align:center;font-size:24px;font-weight:800;color:var(--brand-dark);padding:4px;}
+  .b-subheading{text-align:center;font-size:13px;color:var(--muted);font-weight:600;padding:4px;}
+
+  /* 角色/一句话 */
+  .b-role{text-align:center;font-size:16px;font-weight:600;color:#2b3a42;padding:6px;}
+
+  /* 段落 */
+  .b-text{text-align:center;font-size:14px;color:#39474f;font-weight:600;line-height:1.95;padding:8px 6px;}
+
+  /* 标签 */
+  .b-tags .tags{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:6px;}
+  .b-tags .tag{background:var(--pill-bg);color:var(--brand-dark);padding:6px 16px;border-radius:20px;font-size:14px;font-weight:600;position:relative;}
+  .b-tags .tag .tag-del{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border:none;border-radius:50%;background:#d6473d;color:#fff;font-size:11px;cursor:pointer;opacity:0;transition:.15s;display:flex;align-items:center;justify-content:center;}
+  .b-tags .tag:hover .tag-del{opacity:1;}
+  .b-tags .add-tag{background:transparent;border:2px dashed #b9c8cd;color:#6a7780;padding:5px 14px;border-radius:20px;font-size:14px;font-weight:700;cursor:pointer;}
+  .b-tags .add-tag:hover{border-color:var(--brand);color:var(--brand);}
+
+  /* 数据格 */
+  .b-stats .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:6px;}
+  .b-stats .stat{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:16px 8px;text-align:center;position:relative;}
+  .b-stats .stat .num{font-size:24px;font-weight:800;color:var(--brand);line-height:1.1;}
+  .b-stats .stat .lbl{font-size:12.5px;font-weight:700;color:#2b3a42;margin-top:6px;}
+  .b-stats .stat .sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .b-stats .stat .cell-del{position:absolute;top:3px;right:3px;width:18px;height:18px;border:none;border-radius:50%;background:#d6473d;color:#fff;font-size:11px;cursor:pointer;opacity:0;transition:.15s;}
+  .b-stats .stat:hover .cell-del{opacity:1;}
+  .b-stats .add-stat{display:flex;align-items:center;justify-content:center;border:2px dashed #b9c8cd;border-radius:14px;color:#6a7780;font-size:22px;font-weight:700;cursor:pointer;min-height:80px;}
+  .b-stats .add-stat:hover{border-color:var(--brand);color:var(--brand);background:rgba(31,111,139,.05);}
+
+  /* logo 墙 */
+  .b-wall .group{background:var(--card);border:1px solid var(--card-border);border-radius:18px;padding:20px;}
+  .b-wall .group-head{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;margin-bottom:16px;}
+  .b-wall .group-head .ico{font-size:20px;}
+  .b-wall .logo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .logo-cell{background:var(--logo-cell);border:1px solid var(--logo-cell-border);border-radius:12px;height:64px;display:flex;align-items:center;justify-content:center;padding:8px;overflow:hidden;position:relative;}
+  .logo-cell .cell-img{max-height:36px;max-width:75%;object-fit:contain;display:none;}
+  .logo-cell.has-img .cell-img{display:block;}
+  .logo-cell.has-img .cell-text{display:none;}
+  .logo-cell .cell-text{font-size:13px;font-weight:700;color:#2b3a42;text-align:center;line-height:1.2;}
+  .logo-cell .cell-tools{position:absolute;top:3px;right:3px;display:flex;gap:3px;opacity:0;transition:.15s;}
+  .logo-cell:hover .cell-tools{opacity:1;}
+  .logo-cell .cell-tools button{width:20px;height:20px;border:none;border-radius:5px;background:#16242b;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;}
+  .logo-cell .cell-tools button:hover{background:var(--brand);}
+  .add-cell{display:flex;align-items:center;justify-content:center;height:64px;border:2px dashed #b9c8cd;border-radius:12px;color:#6a7780;font-size:24px;font-weight:700;cursor:pointer;}
+  .add-cell:hover{border-color:var(--brand);color:var(--brand);background:rgba(31,111,139,.05);}
+
+  /* 合作步骤 */
+  .b-steps .steps{background:var(--card);border:1px solid var(--card-border);border-radius:18px;padding:10px 22px;}
+  .step-row{display:flex;gap:14px;align-items:flex-start;padding:18px 0;border-bottom:1px solid #dde6e9;position:relative;}
+  .step-row:last-child{border-bottom:none;}
+  .step-num{flex:none;width:34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;}
+  .step-body .s-title{font-size:16px;font-weight:800;}
+  .step-body .s-sub{font-size:13px;color:#4a5961;margin-top:5px;line-height:1.7;}
+  .step-del{position:absolute;right:0;top:20px;width:20px;height:20px;border:none;border-radius:50%;background:#d6473d;color:#fff;font-size:12px;cursor:pointer;opacity:0;transition:.15s;}
+  .step-row:hover .step-del{opacity:1;}
+  .add-step-in{display:block;width:100%;margin-top:6px;padding:10px;border:2px dashed #b9c8cd;border-radius:12px;background:transparent;color:#6a7780;font-size:13px;font-weight:700;cursor:pointer;}
+  .add-step-in:hover{border-color:var(--brand);color:var(--brand);}
+
+  /* 联系卡片 */
+  .b-contact .contact{background:linear-gradient(135deg,#16242b,#1f6f8b);color:#fff;border-radius:18px;padding:26px;}
+  .b-contact .contact h3{font-size:18px;font-weight:800;margin-bottom:6px;}
+  .b-contact .c-comp{font-size:13px;color:#cfe2e8;font-weight:600;margin-bottom:16px;}
+  .b-contact .contact-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  .b-contact .c-item{background:rgba(255,255,255,.10);border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;position:relative;}
+  .b-contact .c-item .c-k{font-size:11px;color:#a9cdd8;display:block;margin-bottom:2px;}
+  .b-contact .c-item [contenteditable]:hover{background:rgba(255,255,255,.18);}
+  .b-contact .c-item .ci-del{position:absolute;top:4px;right:4px;width:16px;height:16px;border:none;border-radius:50%;background:#d6473d;color:#fff;font-size:10px;cursor:pointer;opacity:0;}
+  .b-contact .c-item:hover .ci-del{opacity:1;}
+  .b-contact .add-ci{border:2px dashed rgba(255,255,255,.4);background:transparent;color:#cfe2e8;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;padding:10px;}
+  /* 联系卡片：文字 + 图片并排 */
+  .b-contact .contact-body{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;}
+  .b-contact .contact-grid{flex:1;min-width:200px;}
+  .b-contact .contact-imgs{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;}
+  .b-contact .cimg-item{position:relative;text-align:center;}
+  .b-contact .cimg-item .img-wrap .wrap-img{border-radius:10px;background:#fff;padding:4px;}
+  .b-contact .cimg-cap{font-size:12px;color:#cfe2e8;font-weight:600;margin-top:6px;}
+  .b-contact .cimg-del{position:absolute;top:-7px;right:-7px;z-index:6;width:18px;height:18px;border:none;border-radius:50%;background:#d6473d;color:#fff;font-size:11px;cursor:pointer;opacity:0;transition:.15s;}
+  .b-contact .cimg-item:hover .cimg-del{opacity:1;}
+  .b-contact .add-cimg{border:2px dashed rgba(255,255,255,.4);background:transparent;color:#cfe2e8;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;padding:9px 10px;}
+  .b-contact .add-cimg:hover{background:rgba(255,255,255,.12);}
+  .b-contact .cimg-add-row{display:flex;flex-direction:column;gap:8px;align-self:flex-start;}
+
+  /* 分隔线 */
+  .b-divider hr{border:none;border-top:1px solid var(--card-border);margin:8px 0;}
+
+  /* 页脚 */
+  .b-footer{text-align:center;font-size:13px;color:var(--muted);font-weight:600;padding:8px;}
+
+  /* ===== 添加积木 弹窗 ===== */
+  .add-block-bar{max-width:640px;margin:14px auto 0;text-align:center;}
+  .add-block-bar>button{background:var(--brand);color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(31,111,139,.3);}
+  .add-block-bar>button:hover{background:var(--accent);}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:#fff;border-radius:18px;padding:24px;max-width:480px;width:100%;max-height:80vh;overflow:auto;}
+  .modal h3{font-size:18px;font-weight:800;margin-bottom:4px;color:var(--text);}
+  .modal p{font-size:13px;color:var(--muted);margin-bottom:18px;}
+  .block-menu{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .bm-item{border:1px solid var(--card-border);border-radius:12px;padding:14px;cursor:pointer;transition:.12s;background:#fafbfc;}
+  .bm-item:hover{border-color:var(--brand);background:var(--pill-bg);}
+  .bm-item .bm-ico{font-size:22px;}
+  .bm-item .bm-name{font-size:14px;font-weight:800;margin-top:6px;color:var(--text);}
+  .bm-item .bm-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+  .modal-close{margin-top:18px;width:100%;background:#eceef0;color:#555;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;}
+
+  @media(max-width:520px){.b-stats .stats,.b-wall .logo-grid,.b-contact .contact-grid{grid-template-columns:repeat(2,1fr);}.b-name{font-size:32px;}.toolbar .title{width:100%;margin-bottom:4px;}.block-menu{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="title">🧱 积木式主页编辑器</span>
+  <button onclick="togglePanel()" class="ghost">🎨 颜色 / 字体</button>
+  <button onclick="openAddModal()" class="ghost">＋ 添加积木</button>
+  <button onclick="document.getElementById('importInput').click()" class="ghost">📂 导入已有页面</button>
+  <button onclick="resetAll()" class="ghost">重置</button>
+  <button onclick="exportHTML()">⬇ 导出网页</button>
+  <button onclick="exportImage(event)">🖼️ 导出高清图片</button>
+  <span class="hint">每块右上角：⬆⬇移动 · ⧉复制 · ✕删除 ｜ 点文字直接改 · 点图片换图 ｜ 底部「添加积木」插新块 ｜ 改完点导出</span>
+</div>
+
+<div class="theme-panel" id="themePanel">
+  <div class="tp-row"><span class="tp-label">主题色</span><div class="swatches" id="colorSwatches"></div><label class="color-pick">自定义 <input type="color" id="customColor" value="#1f6f8b"></label></div>
+  <div class="tp-row"><span class="tp-label">背景调</span><div class="swatches" id="bgSwatches"></div></div>
+  <div class="tp-row"><span class="tp-label">字体</span><div class="font-btns" id="fontBtns"></div></div>
+</div>
+
+<div class="stage">
+  <div class="page" id="page"><!-- 积木由 JS 渲染 --></div>
+  <div class="add-block-bar"><button onclick="openAddModal()">＋ 添加积木</button></div>
+</div>
+
+<!-- 添加积木弹窗 -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <h3>添加一个积木块</h3>
+    <p>点击下方任意类型，会插入到页面最底部，之后可用 ⬆⬇ 移动到任意位置。</p>
+    <div class="block-menu" id="blockMenu"></div>
+    <button class="modal-close" onclick="closeAddModal()">取消</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none">
+<input type="file" id="importInput" accept=".html,text/html" style="display:none">
+
+<script>
+/* ============ 图片选择 ============ */
+let imgTarget=null,cellTarget=null;
+const fileInput=document.getElementById('fileInput');
+function pickImg(el){imgTarget=el;cellTarget=null;fileInput.click();}
+function pickCellImg(cell){cellTarget=cell;imgTarget=null;fileInput.click();}
+fileInput.addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    if(imgTarget)imgTarget.src=ev.target.result;
+    if(cellTarget){cellTarget.querySelector('.cell-img').src=ev.target.result;cellTarget.classList.add('has-img');}
+  };
+  r.readAsDataURL(f);fileInput.value='';
+});
+
+/* ============ 积木块定义 ============ */
+// 每种积木：label(显示名) + html(内部内容，不含外框)
+const blockTypes={
+  logo:{label:'圆形 Logo/头像',ico:'🟢',desc:'可缩放 · 圆形/圆角',
+    html:imgWrapHTML({src:'https://via.placeholder.com/96/1f6f8b/ffffff?text=Logo',width:96,round:true,kind:'logo'})},
+  image:{label:'图片',ico:'🖼️',desc:'可缩放 · 二维码/海报等',
+    html:imgWrapHTML({src:'https://via.placeholder.com/580x300/dde7ea/1f6f8b?text=Click+to+upload',width:580,round:false,kind:'image'})},
+  name:{label:'大标题',ico:'🔠',desc:'公司名/姓名',
+    html:`<div contenteditable="true">公司名 / 姓名</div>`},
+  role:{label:'副标题/一句话',ico:'💬',desc:'定位语',
+    html:`<div contenteditable="true">一句话定位语</div>`},
+  heading:{label:'章节标题',ico:'📌',desc:'分区大标题',
+    html:`<div contenteditable="true">章节标题</div>`},
+  subheading:{label:'小注释',ico:'📝',desc:'标题下灰色小字',
+    html:`<div contenteditable="true">这里是一行小注释说明</div>`},
+  text:{label:'文字段落',ico:'📄',desc:'多行正文',
+    html:`<div contenteditable="true">在这里输入正文内容，可以换行。<br>第二行内容。<br>第三行内容。</div>`},
+  tags:{label:'标签组',ico:'🏷️',desc:'胶囊小标签',
+    html:`<div class="tags">__TAGS__<button class="add-tag" onclick="addTag(this)">＋ 标签</button></div>`,
+    init(el){['🌐 标签一','🤖 标签二'].forEach(t=>el.querySelector('.tags').insertAdjacentHTML('afterbegin',tagHTML(t)));}},
+  stats:{label:'数据格',ico:'🔢',desc:'一排数字卡片',
+    html:`<div class="stats">__STATS__<div class="add-stat" onclick="addStat(this)">＋</div></div>`,
+    init(el){const g=el.querySelector('.stats'),btn=g.querySelector('.add-stat');
+      [['8年','行业经验','深耕领域'],['100+','合作伙伴','长期信赖'],['50+','成功案例','覆盖多行业'],['98%','满意度','客户反馈']]
+      .forEach(s=>btn.insertAdjacentHTML('beforebegin',statHTML(...s)));}},
+  wall:{label:'Logo 墙 / 客户墙',ico:'🧩',desc:'一组带标题的格子',
+    html:`<div class="group"><div class="group-head"><span class="ico" contenteditable="true">🏆</span><span contenteditable="true">分组标题</span></div><div class="logo-grid">__CELLS__<div class="add-cell" onclick="addCell(this)">＋</div></div></div>`,
+    init(el){const g=el.querySelector('.logo-grid');['项目一','项目二','项目三','项目四'].forEach(t=>g.querySelector('.add-cell').insertAdjacentHTML('beforebegin',cellHTML(t)));}},
+  steps:{label:'步骤/流程',ico:'🪜',desc:'带编号的步骤',
+    html:`<div class="steps">__STEPS__<button class="add-step-in" onclick="addStep(this)">＋ 添加步骤</button></div>`,
+    init(el){const c=el.querySelector('.steps'),btn=c.querySelector('.add-step-in');
+      [['第一步标题','第一步的说明文字……'],['第二步标题','第二步的说明文字……'],['第三步标题','第三步的说明文字……']]
+      .forEach(s=>btn.insertAdjacentHTML('beforebegin',stepHTML(s[0],s[1])));renumber(c);}},
+  contact:{label:'联系卡片',ico:'📇',desc:'深色 · 可加二维码图片',
+    html:`<div class="contact"><h3 contenteditable="true">联系我们</h3><p class="c-comp" contenteditable="true">公司全称</p><div class="contact-body"><div class="contact-grid">__CI__<button class="add-ci" onclick="addCI(this)">＋ 加一项</button></div><div class="contact-imgs">__CIMG__<div class="cimg-add-row"><button class="add-cimg" onclick="addQR(this.closest('.cimg-add-row'),'wechat')">＋ 微信二维码</button><button class="add-cimg" onclick="addQR(this.closest('.cimg-add-row'),'feishu')">＋ 飞书二维码</button><button class="add-cimg" onclick="addQR(this.closest('.cimg-add-row'),'custom')">＋ 其他图片</button></div></div></div></div>`,
+    init(el){const g=el.querySelector('.contact-grid'),btn=g.querySelector('.add-ci');
+      [['微信','点击填写'],['邮箱','点击填写'],['电话','点击填写'],['飞书','点击填写']].forEach(c=>btn.insertAdjacentHTML('beforebegin',ciHTML(c[0],c[1])));}},
+  divider:{label:'分隔线',ico:'➖',desc:'细横线',html:`<hr>`},
+  footer:{label:'页脚',ico:'🔻',desc:'底部署名',html:`<div contenteditable="true">底部署名 / 版权信息</div>`}
+};
+
+/* ---- 小片段构造器 ---- */
+function tagHTML(t){return `<span class="tag"><span contenteditable="true">${t}</span><button class="tag-del" onclick="this.closest('.tag').remove()">✕</button></span>`;}
+function statHTML(n,l,s){return `<div class="stat"><button class="cell-del" onclick="this.closest('.stat').remove()">✕</button><div class="num" contenteditable="true">${n}</div><div class="lbl" contenteditable="true">${l}</div><div class="sub" contenteditable="true">${s}</div></div>`;}
+function cellHTML(t){return `<div class="logo-cell"><img class="cell-img" src="" alt=""><span class="cell-text" contenteditable="true">${t}</span><div class="cell-tools"><button title="换图" onclick="pickCellImg(this.closest('.logo-cell'))">📷</button><button title="改回文字" onclick="this.closest('.logo-cell').classList.remove('has-img')">A</button><button title="删除" onclick="this.closest('.logo-cell').remove()">✕</button></div></div>`;}
+function stepHTML(t,s){return `<div class="step-row"><div class="step-num">1</div><div class="step-body"><div class="s-title" contenteditable="true">${t}</div><div class="s-sub" contenteditable="true">${s}</div></div><button class="step-del" onclick="const c=this.closest('.steps');this.closest('.step-row').remove();renumber(c)">✕</button></div>`;}
+function ciHTML(k,v){return `<div class="c-item"><button class="ci-del" onclick="this.closest('.c-item').remove()">✕</button><span class="c-k" contenteditable="true">${k}</span><span contenteditable="true">${v}</span></div>`;}
+
+/* ---- 可缩放图片组件 ---- */
+// kind: 'logo' | 'image' | 'contact'
+function imgWrapHTML(opts){
+  const{src,width=200,round=false,kind='image'}=opts;
+  const maxW=kind==='contact'?260:580;
+  return `<div class="img-wrap${round?' round':''}" data-kind="${kind}" style="width:${width}px;">
+    <img class="wrap-img" src="${src}" alt="">
+    <div class="img-bar">
+      <button title="缩小" onclick="resizeImg(this,-1)">－</button>
+      <button title="放大" onclick="resizeImg(this,1)">＋</button>
+      <button title="圆/方角" onclick="toggleRound(this)">⬭</button>
+      <button title="换图片" onclick="pickWrapImg(this)">📷</button>
+    </div>
+  </div>`;
+}
+function resizeImg(btn,dir){
+  const w=btn.closest('.img-wrap');
+  const cur=parseInt(w.style.width)||w.offsetWidth;
+  const next=Math.max(48,Math.min(620,cur+dir*Math.max(16,Math.round(cur*0.12))));
+  w.style.width=next+'px';
+}
+function pickWrapImg(btn){pickImg(btn.closest('.img-wrap').querySelector('.wrap-img'));}
+function toggleRound(btn){btn.closest('.img-wrap').classList.toggle('round');}
+
+/* ---- 联系卡片里的图片（二维码等） ---- */
+function contactImgHTML(caption,label){
+  caption=caption||'扫码添加';
+  label=label||'二维码';
+  return `<div class="cimg-item">
+    <button class="cimg-del" onclick="this.closest('.cimg-item').remove()">✕</button>
+    <div class="img-wrap" data-kind="contact" style="width:120px;">
+      <img class="wrap-img" src="https://via.placeholder.com/120/ffffff/16242b?text=${encodeURIComponent(label)}" alt="">
+      <div class="img-bar">
+        <button title="缩小" onclick="resizeImg(this,-1)">－</button>
+        <button title="放大" onclick="resizeImg(this,1)">＋</button>
+        <button title="换图片" onclick="pickWrapImg(this)">📷</button>
+      </div>
+    </div>
+    <div class="cimg-cap" contenteditable="true">${caption}</div>
+  </div>`;
+}
+function addContactImg(beforeEl,caption,label){beforeEl.insertAdjacentHTML('beforebegin',contactImgHTML(caption,label));}
+// 快捷添加常用二维码（beforeEl 为按钮所在的 cimg-add-row）
+function addQR(beforeEl,kind){
+  const presets={wechat:['微信扫码','微信'],feishu:['飞书扫码','飞书'],custom:['扫码添加','二维码']};
+  const p=presets[kind]||presets.custom;
+  addContactImg(beforeEl,p[0],p[1]);
+}
+
+
+/* ---- 块内增删 ---- */
+function addTag(btn){btn.insertAdjacentHTML('beforebegin',tagHTML('新标签'));}
+function addStat(btn){btn.insertAdjacentHTML('beforebegin',statHTML('00','标签','说明'));}
+function addCell(btn){btn.insertAdjacentHTML('beforebegin',cellHTML('新项目'));}
+function addStep(btn){const c=btn.closest('.steps');btn.insertAdjacentHTML('beforebegin',stepHTML('新步骤','说明文字……'));renumber(c);}
+function addCI(btn){btn.insertAdjacentHTML('beforebegin',ciHTML('项目','点击填写'));}
+function renumber(stepsEl){stepsEl.querySelectorAll('.step-num').forEach((el,i)=>el.textContent=i+1);}
+
+/* ============ 积木块外框 + 操作 ============ */
+function wrapBlock(type){
+  const def=blockTypes[type];
+  const block=document.createElement('div');
+  block.className='block b-'+type;
+  block.dataset.type=type;
+  block.innerHTML=`<span class="block-label">${def.label}</span>
+    <div class="block-tools">
+      <button title="上移" onclick="moveBlock(this,-1)">⬆</button>
+      <button title="下移" onclick="moveBlock(this,1)">⬇</button>
+      <button title="复制" onclick="dupBlock(this)">⧉</button>
+      <button class="del" title="删除" onclick="delBlock(this)">✕</button>
+    </div>
+    <div class="block-inner">${def.html.replace(/__\w+__/g,'')}</div>`;
+  if(def.init)def.init(block);
+  return block;
+}
+function moveBlock(btn,dir){
+  const b=btn.closest('.block');
+  if(dir<0&&b.previousElementSibling)b.parentNode.insertBefore(b,b.previousElementSibling);
+  if(dir>0&&b.nextElementSibling)b.parentNode.insertBefore(b.nextElementSibling,b);
+}
+function dupBlock(btn){
+  const b=btn.closest('.block');
+  const copy=b.cloneNode(true);
+  b.parentNode.insertBefore(copy,b.nextElementSibling);
+}
+function delBlock(btn){
+  const b=btn.closest('.block');
+  if(confirm('确定删除这个「'+blockTypes[b.dataset.type].label+'」积木块吗？'))b.remove();
+}
+
+/* ============ 添加积木弹窗 ============ */
+function openAddModal(){document.getElementById('addModal').classList.add('show');}
+function closeAddModal(){document.getElementById('addModal').classList.remove('show');}
+function addBlock(type){
+  document.getElementById('page').appendChild(wrapBlock(type));
+  closeAddModal();
+  const b=document.getElementById('page').lastElementChild;
+  if(b.scrollIntoView)b.scrollIntoView({behavior:'smooth',block:'center'});
+}
+// 渲染菜单
+const menu=document.getElementById('blockMenu');
+Object.entries(blockTypes).forEach(([k,d])=>{
+  const item=document.createElement('div');item.className='bm-item';item.onclick=()=>addBlock(k);
+  item.innerHTML=`<div class="bm-ico">${d.ico}</div><div class="bm-name">${d.label}</div><div class="bm-desc">${d.desc}</div>`;
+  menu.appendChild(item);
+});
+document.getElementById('addModal').addEventListener('click',e=>{if(e.target.id==='addModal')closeAddModal();});
+
+/* ============ 默认页面（示例初始内容） ============ */
+const defaultLayout=[
+  ['logo',b=>{}],
+  ['name',b=>b.querySelector('[contenteditable]').textContent='公司名 / 姓名'],
+  ['role',b=>b.querySelector('[contenteditable]').textContent='一句话介绍 · 你的定位与价值主张'],
+  ['tags',b=>{b.querySelector('.tags').innerHTML='';['🌐 标签一','✨ 标签二','🚀 标签三'].forEach(t=>b.querySelector('.tags').insertAdjacentHTML('beforeend',tagHTML(t)));b.querySelector('.tags').insertAdjacentHTML('beforeend','<button class="add-tag" onclick="addTag(this)">＋ 标签</button>');}],
+  ['text',b=>b.querySelector('[contenteditable]').innerHTML='在这里写一段简介，介绍你或你的公司是做什么的。<br>第二行可以写核心优势、服务内容或经历。<br>第三行写你的理念、愿景或差异化亮点。'],
+  ['stats',b=>fillStats(b,[['8年','行业经验','深耕领域'],['100+','合作伙伴','长期信赖'],['50+','成功案例','覆盖多行业'],['98%','满意度','客户反馈']])],
+  ['stats',b=>fillStats(b,[['24h','响应速度','快速对接'],['30天','平均周期','高效交付'],['+60%','效率提升','较以往'],['5★','服务评价','一致好评']])],
+  ['heading',b=>b.querySelector('[contenteditable]').textContent='合作伙伴'],
+  ['subheading',b=>b.querySelector('[contenteditable]').textContent='与各行业伙伴长期合作'],
+  ['wall',b=>fillWall(b,'🤝','分组标题一',['Logo 一','Logo 二','Logo 三','Logo 四'])],
+  ['wall',b=>fillWall(b,'🤝','分组标题二',['Logo 一','Logo 二','Logo 三','Logo 四'])],
+  ['wall',b=>fillWall(b,'🤝','分组标题三',['Logo 一','Logo 二','Logo 三','Logo 四'])],
+  ['wall',b=>fillWall(b,'🤝','分组标题四',['Logo 一','Logo 二','Logo 三','Logo 四'])],
+  ['heading',b=>b.querySelector('[contenteditable]').textContent='合作流程'],
+  ['subheading',b=>b.querySelector('[contenteditable]').textContent='简单三步，轻松开始'],
+  ['steps',b=>fillSteps(b,[['第一步 · 沟通需求','与我们取得联系，说明你的需求与目标，一起明确方向与预期。'],['第二步 · 制定方案','根据需求量身定制方案，确认细节、范围与时间安排。'],['第三步 · 落地交付','按计划推进并交付成果，持续跟进与优化。']])],
+  ['contact',b=>fillContact(b,'联系我们','公司全称',[['微信','点击填写'],['邮箱','点击填写'],['电话','点击填写'],['飞书','点击填写']])]
+];
+function fillStats(block,rows){const g=block.querySelector('.stats');g.innerHTML='';rows.forEach(r=>g.insertAdjacentHTML('beforeend',statHTML(...r)));g.insertAdjacentHTML('beforeend','<div class="add-stat" onclick="addStat(this)">＋</div>');}
+function fillWall(block,ico,title,cells){block.querySelector('.group-head .ico').textContent=ico;block.querySelector('.group-head span:last-child').textContent=title;const g=block.querySelector('.logo-grid');g.innerHTML='';cells.forEach(c=>g.insertAdjacentHTML('beforeend',cellHTML(c)));g.insertAdjacentHTML('beforeend','<div class="add-cell" onclick="addCell(this)">＋</div>');}
+function fillSteps(block,steps){const c=block.querySelector('.steps');c.innerHTML='';steps.forEach(s=>c.insertAdjacentHTML('beforeend',stepHTML(s[0],s[1])));c.insertAdjacentHTML('beforeend','<button class="add-step-in" onclick="addStep(this)">＋ 添加步骤</button>');renumber(c);}
+function fillContact(block,title,comp,items){block.querySelector('h3').textContent=title;block.querySelector('.c-comp').textContent=comp;const g=block.querySelector('.contact-grid');g.innerHTML='';items.forEach(i=>g.insertAdjacentHTML('beforeend',ciHTML(i[0],i[1])));g.insertAdjacentHTML('beforeend','<button class="add-ci" onclick="addCI(this)">＋ 加一项</button>');}
+
+function renderDefault(){
+  const page=document.getElementById('page');page.innerHTML='';
+  defaultLayout.forEach(([type,fill])=>{const b=wrapBlock(type);fill(b);page.appendChild(b);});
+}
+renderDefault();
+
+/* ============ 导入已有页面（恢复可编辑） ============ */
+document.getElementById('importInput').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{importHTML(ev.target.result);e.target.value='';};
+  r.readAsText(f);
+});
+function importHTML(htmlText){
+  try{
+    const doc=new DOMParser().parseFromString(htmlText,'text/html');
+    const importedPage=doc.getElementById('page');
+    if(!importedPage){alert('没有识别到可导入的页面内容。请选择本编辑器导出的 HTML 文件。');return;}
+    if(!confirm('导入会替换当前页面内容（包括你现在的修改）。确定继续吗？'))return;
+    // 应用主题（颜色/字体）
+    const rootStyle=doc.documentElement.getAttribute('style');
+    if(rootStyle){document.documentElement.setAttribute('style',rootStyle);}
+    // 若内联 --font 为空（导出时未写入），从导出文件中恢复字体
+    let inlineFont=(document.documentElement.style.getPropertyValue('--font')||'').trim();
+    if(!inlineFont){
+      let fontVal='';
+      // 1) 从某个带内联 font-family 的文字节点推断
+      const sample=importedPage.querySelector('[style*="font-family"]');
+      if(sample&&sample.style.fontFamily)fontVal=sample.style.fontFamily;
+      // 2) 或从导出 <style> 文本里找 var(--font, 回退值)
+      if(!fontVal){const styleTxt=[...doc.querySelectorAll('style')].map(s=>s.textContent).join('');const m=styleTxt.match(/font-family:var\(--font,([^)]+)\)/);if(m&&m[1].trim())fontVal=m[1].trim();}
+      if(fontVal)document.documentElement.style.setProperty('--font',fontVal);
+    }
+    syncPanelFromRoot();
+    const bodyBg=doc.body&&doc.body.style&&doc.body.style.background;
+    if(bodyBg)document.body.style.background=bodyBg;
+    // 重建积木
+    const page=document.getElementById('page');page.innerHTML='';
+    importedPage.querySelectorAll('.block').forEach(src=>{
+      const type=src.dataset.type;
+      if(!type||!blockTypes[type])return;
+      const block=document.createElement('div');
+      block.className='block b-'+type;block.dataset.type=type;
+      // 取出导出版里的展示内容（.block-inner 或除控件外的内容）
+      let inner=src.querySelector('.block-inner');
+      let innerHTML=inner?inner.innerHTML:src.innerHTML;
+      block.innerHTML=`<span class="block-label">${blockTypes[type].label}</span>
+        <div class="block-tools">
+          <button title="上移" onclick="moveBlock(this,-1)">⬆</button>
+          <button title="下移" onclick="moveBlock(this,1)">⬇</button>
+          <button title="复制" onclick="dupBlock(this)">⧉</button>
+          <button class="del" title="删除" onclick="delBlock(this)">✕</button>
+        </div>
+        <div class="block-inner">${innerHTML}</div>`;
+      reattachControls(block,type);
+      page.appendChild(block);
+    });
+    alert('导入成功！所有内容和图片已恢复为可编辑状态。');
+  }catch(err){alert('导入失败：'+err.message);}
+}
+// 给导入的（无控件的）展示内容重新装上编辑控件
+function reattachControls(block,type){
+  // 文字类：补 contenteditable
+  block.querySelectorAll('.b-name>div,.block-inner>div').forEach(()=>{});
+  // 通用：所有展示文字节点设为可编辑
+  const editableSelectors='.block-inner>div,.tag>span,.num,.lbl,.sub,.group-head .ico,.group-head span,.cell-text,.s-title,.s-sub,h3,.c-comp,.c-k,.c-item>span:not(.c-k),.cimg-cap';
+  block.querySelectorAll(editableSelectors).forEach(el=>el.setAttribute('contenteditable','true'));
+  // 图片包装：补工具条 + 点击
+  block.querySelectorAll('.img-wrap').forEach(w=>{
+    if(!w.querySelector('.img-bar')){
+      const isContact=w.dataset.kind==='contact';
+      const roundBtn=isContact?'':'<button title="圆/方角" onclick="toggleRound(this)">⬭</button>';
+      w.insertAdjacentHTML('beforeend','<div class="img-bar"><button title="缩小" onclick="resizeImg(this,-1)">－</button><button title="放大" onclick="resizeImg(this,1)">＋</button>'+roundBtn+'<button title="换图片" onclick="pickWrapImg(this)">📷</button></div>');
+    }
+  });
+  // 旧版导出的 logo-top / 普通 img-edit → 包装成 img-wrap（兼容）
+  block.querySelectorAll('.logo-top').forEach(old=>{
+    const img=old.querySelector('img');if(!img)return;
+    const wrap=document.createElement('div');wrap.className='img-wrap round';wrap.dataset.kind='logo';wrap.style.width='96px';
+    wrap.innerHTML='<img class="wrap-img" src="'+img.src+'" alt=""><div class="img-bar"><button onclick="resizeImg(this,-1)">－</button><button onclick="resizeImg(this,1)">＋</button><button onclick="toggleRound(this)">⬭</button><button onclick="pickWrapImg(this)">📷</button></div>';
+    old.replaceWith(wrap);
+  });
+  block.querySelectorAll('.b-image .img-edit,.block-inner>.img-edit').forEach(old=>{
+    const img=old.querySelector('img');if(!img||old.querySelector('.img-wrap'))return;
+    const wrap=document.createElement('div');wrap.className='img-wrap';wrap.dataset.kind='image';wrap.style.width=(img.naturalWidth?Math.min(580,img.naturalWidth):400)+'px';
+    wrap.innerHTML='<img class="wrap-img" src="'+img.src+'" alt=""><div class="img-bar"><button onclick="resizeImg(this,-1)">－</button><button onclick="resizeImg(this,1)">＋</button><button onclick="toggleRound(this)">⬭</button><button onclick="pickWrapImg(this)">📷</button></div>';
+    old.replaceWith(wrap);
+  });
+  // logo 单元格的悬停工具
+  block.querySelectorAll('.logo-cell').forEach(c=>{
+    if(!c.querySelector('.cell-tools')){
+      c.insertAdjacentHTML('beforeend',`<div class="cell-tools"><button title="换图" onclick="pickCellImg(this.closest('.logo-cell'))">📷</button><button title="改回文字" onclick="this.closest('.logo-cell').classList.remove('has-img')">A</button><button title="删除" onclick="this.closest('.logo-cell').remove()">✕</button></div>`);
+    }
+  });
+  // 各类“删除”小按钮 + “添加”按钮
+  block.querySelectorAll('.tag').forEach(t=>{if(!t.querySelector('.tag-del'))t.insertAdjacentHTML('beforeend',`<button class="tag-del" onclick="this.closest('.tag').remove()">✕</button>`);});
+  block.querySelectorAll('.stat').forEach(s=>{if(!s.querySelector('.cell-del'))s.insertAdjacentHTML('afterbegin',`<button class="cell-del" onclick="this.closest('.stat').remove()">✕</button>`);});
+  block.querySelectorAll('.step-row').forEach(s=>{if(!s.querySelector('.step-del'))s.insertAdjacentHTML('beforeend',`<button class="step-del" onclick="const c=this.closest('.steps');this.closest('.step-row').remove();renumber(c)">✕</button>`);});
+  block.querySelectorAll('.c-item').forEach(c=>{if(!c.querySelector('.ci-del'))c.insertAdjacentHTML('afterbegin',`<button class="ci-del" onclick="this.closest('.c-item').remove()">✕</button>`);});
+  block.querySelectorAll('.cimg-item').forEach(c=>{if(!c.querySelector('.cimg-del'))c.insertAdjacentHTML('afterbegin',`<button class="cimg-del" onclick="this.closest('.cimg-item').remove()">✕</button>`);});
+  // 补回各容器的“＋添加”按钮
+  if(type==='tags'){const g=block.querySelector('.tags');if(g&&!g.querySelector('.add-tag'))g.insertAdjacentHTML('beforeend','<button class="add-tag" onclick="addTag(this)">＋ 标签</button>');}
+  if(type==='stats'){const g=block.querySelector('.stats');if(g&&!g.querySelector('.add-stat'))g.insertAdjacentHTML('beforeend','<div class="add-stat" onclick="addStat(this)">＋</div>');}
+  if(type==='wall'){const g=block.querySelector('.logo-grid');if(g&&!g.querySelector('.add-cell'))g.insertAdjacentHTML('beforeend','<div class="add-cell" onclick="addCell(this)">＋</div>');}
+  if(type==='steps'){const c=block.querySelector('.steps');if(c){if(!c.querySelector('.add-step-in'))c.insertAdjacentHTML('beforeend','<button class="add-step-in" onclick="addStep(this)">＋ 添加步骤</button>');renumber(c);}}
+  if(type==='contact'){
+    const grid=block.querySelector('.contact-grid');
+    if(grid&&!grid.querySelector('.add-ci'))grid.insertAdjacentHTML('beforeend','<button class="add-ci" onclick="addCI(this)">＋ 加一项</button>');
+    // 确保有 contact-body 容器（旧版导出没有，需补上并把 grid 放进去）
+    const contact=block.querySelector('.contact');
+    let body=block.querySelector('.contact-body');
+    if(!body){body=document.createElement('div');body.className='contact-body';if(grid){grid.parentNode.insertBefore(body,grid);body.appendChild(grid);}else{contact.appendChild(body);}}
+    // 确保有图片容器
+    let imgs=block.querySelector('.contact-imgs');
+    if(!imgs){imgs=document.createElement('div');imgs.className='contact-imgs';body.appendChild(imgs);}
+    // 补回三个二维码快捷按钮
+    if(!imgs.querySelector('.cimg-add-row')){
+      imgs.insertAdjacentHTML('beforeend','<div class="cimg-add-row"><button class="add-cimg" onclick="addQR(this.closest(\'.cimg-add-row\'),\'wechat\')">＋ 微信二维码</button><button class="add-cimg" onclick="addQR(this.closest(\'.cimg-add-row\'),\'feishu\')">＋ 飞书二维码</button><button class="add-cimg" onclick="addQR(this.closest(\'.cimg-add-row\'),\'custom\')">＋ 其他图片</button></div>');
+    }
+  }
+}
+
+/* ============ 主题面板 ============ */
+function togglePanel(){document.getElementById('themePanel').classList.toggle('open');}
+function shade(hex,p){hex=hex.replace('#','');let r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);r=Math.round(Math.min(255,Math.max(0,r+(p<0?r:255-r)*p)));g=Math.round(Math.min(255,Math.max(0,g+(p<0?g:255-g)*p)));b=Math.round(Math.min(255,Math.max(0,b+(p<0?b:255-b)*p)));return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');}
+function applyBrand(hex){const r=document.documentElement.style;r.setProperty('--brand',hex);r.setProperty('--brand-dark',shade(hex,-0.25));r.setProperty('--accent',shade(hex,0.18));r.setProperty('--pill-bg',shade(hex,0.82));document.getElementById('customColor').value=hex;document.querySelectorAll('#colorSwatches .swatch').forEach(s=>s.classList.toggle('active',s.dataset.c.toLowerCase()===hex.toLowerCase()));}
+// 导入后同步面板显示
+function syncPanelFromRoot(){
+  const cs=getComputedStyle(document.documentElement);
+  const brand=(cs.getPropertyValue('--brand')||'').trim();
+  if(brand){const cp=document.getElementById('customColor');if(/^#?[0-9a-fA-F]{6}$/.test(brand))cp.value=brand.startsWith('#')?brand:'#'+brand;document.querySelectorAll('#colorSwatches .swatch').forEach(s=>s.classList.toggle('active',s.dataset.c.toLowerCase()===brand.toLowerCase()));}
+  const font=(cs.getPropertyValue('--font')||'').trim();
+  document.querySelectorAll('#fontBtns .font-btn').forEach(b=>b.classList.remove('active'));
+}
+const brandColors=['#1f6f8b','#2f6f4f','#6b3fa0','#b8442d','#c2185b','#0f4c81','#c98a00','#374151'];
+const cs=document.getElementById('colorSwatches');
+brandColors.forEach(c=>{const d=document.createElement('div');d.className='swatch';d.style.background=c;d.dataset.c=c;d.onclick=()=>applyBrand(c);cs.appendChild(d);});
+document.getElementById('customColor').addEventListener('input',e=>applyBrand(e.target.value));
+const bgThemes=[{name:'冷灰',card:'#eef3f5',border:'#dde6e9',body:'#e7ecee'},{name:'米白',card:'#f4f1ea',border:'#e6e0d4',body:'#ece7dd'},{name:'纯白',card:'#f6f7f8',border:'#e8eaec',body:'#eceef0'},{name:'浅绿',card:'#f3f6f1',border:'#e3e9e0',body:'#e9ece8'},{name:'深色',card:'#222a30',border:'#333d44',body:'#161c21',text:'#eef2f4',muted:'#9fb0ba',cell:'#2b343b',cellB:'#3a444c'}];
+const bs=document.getElementById('bgSwatches');
+bgThemes.forEach((t,i)=>{const d=document.createElement('div');d.className='swatch'+(i===0?' active':'');d.style.background=t.card;d.style.border='2px solid '+t.border;d.title=t.name;d.onclick=()=>{const r=document.documentElement.style;r.setProperty('--card',t.card);r.setProperty('--card-border',t.border);document.body.style.background=t.body;r.setProperty('--text',t.text||'#16242b');r.setProperty('--muted',t.muted||'#6a7780');r.setProperty('--logo-cell',t.cell||'#ffffff');r.setProperty('--logo-cell-border',t.cellB||'#e6ecee');r.setProperty('--bg',t.cell?'#1b2228':'#ffffff');document.querySelectorAll('#bgSwatches .swatch').forEach(x=>x.classList.remove('active'));d.classList.add('active');};bs.appendChild(d);});
+const fonts=[{name:'默认黑体',v:'"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif'},{name:'宋体衬线',v:'"Songti SC","SimSun","STSong",Georgia,serif'},{name:'楷体',v:'"Kaiti SC","KaiTi","STKaiti",serif'},{name:'圆体',v:'"PingFang SC","Yuanti SC","Hiragino Sans GB",sans-serif'},{name:'等宽科技',v:'"SF Mono","Consolas","Courier New",monospace'}];
+const fb=document.getElementById('fontBtns');
+fonts.forEach((f,i)=>{const b=document.createElement('button');b.className='font-btn'+(i===0?' active':'');b.textContent=f.name;b.style.fontFamily=f.v;b.onclick=()=>{document.documentElement.style.setProperty('--font',f.v);document.querySelectorAll('#fontBtns .font-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');};fb.appendChild(b);});
+
+/* ============ 重置 ============ */
+function resetAll(){if(confirm('确定要清空所有修改、恢复初始内容吗？'))location.reload();}
+
+/* ============ 导出 ============ */
+function exportHTML(){
+  const clone=document.getElementById('page').cloneNode(true);
+  // 移除所有编辑控件（含新增的图片工具条、二维码删除按钮等）
+  clone.querySelectorAll('.block-tools,.block-label,.add-tag,.add-stat,.add-cell,.add-step-in,.add-ci,.add-cimg,.cimg-add-row,.tag-del,.cell-del,.step-del,.ci-del,.cimg-del,.cell-tools,.img-bar').forEach(el=>el.remove());
+  clone.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
+  clone.querySelectorAll('.img-edit').forEach(el=>{el.classList.remove('img-edit');el.removeAttribute('onclick');});
+  clone.querySelectorAll('[onclick]').forEach(el=>el.removeAttribute('onclick'));
+  clone.querySelectorAll('.block').forEach(el=>el.style.boxShadow='none');
+  // 去掉空的 contact-imgs 容器（没放图片时）
+  clone.querySelectorAll('.contact-imgs').forEach(el=>{if(!el.querySelector('.cimg-item'))el.remove();});
+
+  // 提取页面相关 CSS（去掉编辑器 UI 的样式）
+  let css=document.querySelector('style').innerHTML;
+  const root=document.documentElement.getAttribute('style')||'';
+  const bodyBg=getComputedStyle(document.body).backgroundColor;
+
+  // 移除仅编辑器用的样式段（保留展示样式；残留无匹配元素的规则也无害）
+  css=css.replace(/\.toolbar[\s\S]*?\.font-btn\.active\{background:var\(--brand\);border-color:var\(--brand\);\}/,'')
+         .replace(/\/\* ===== 拍照模式[\s\S]*?\.img-edit::after\{display:none !important;\}/,'')
+         .replace(/\[contenteditable\][\s\S]*?box-shadow:0 0 0 2px var\(--brand\);\}/,'')
+         .replace(/\.img-edit\{[\s\S]*?\.img-edit:hover::after\{opacity:1;\}/,'')
+         .replace(/\.block\{[\s\S]*?\.block:hover>\.block-label\{opacity:\.9;\}/,'.block{margin:6px 0;}')
+         .replace(/\.img-bar[\s\S]*?\.img-bar button:hover\{background:var\(--brand\);\}/,'')
+         .replace(/\.cell-tools[\s\S]*?background:var\(--brand\);\}/g,'')
+         .replace(/\.add-cell\{[\s\S]*?background:rgba\(31,111,139,\.05\);\}/g,'')
+         .replace(/\.add-block-bar[\s\S]*?\.modal-close\{[^}]*\}/,'')
+         .replace(/\.tag-del[\s\S]*?opacity:1;\}/g,'')
+         .replace(/\.cell-del[\s\S]*?opacity:1;\}/g,'')
+         .replace(/\.step-del[\s\S]*?opacity:1;\}/g,'')
+         .replace(/\.cimg-del[\s\S]*?opacity:1;\}/g,'')
+         .replace(/\.add-stat[\s\S]*?background:rgba\(31,111,139,\.05\);\}/g,'')
+         .replace(/\.add-tag[\s\S]*?color:var\(--brand\);\}/g,'')
+         .replace(/\.add-step-in[\s\S]*?color:var\(--brand\);\}/g,'')
+         .replace(/\.add-ci[^}]*\}/g,'')
+         .replace(/\.add-cimg[^}]*\}/g,'')
+         .replace(/\.b-contact \.cimg-add-row[^}]*\}/g,'')
+         .replace(/\.b-contact \.add-cimg:hover[^}]*\}/g,'')
+         .replace(/\.b-contact \.c-item \[contenteditable\]:hover\{[^}]*\}/g,'');
+
+  const html=`<!DOCTYPE html>
+<html lang="zh" style="${root}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>我的主页</title>
+<style>
+body{font-family:var(--font,"PingFang SC","Microsoft YaHei",sans-serif);background:${bodyBg};color:var(--text);line-height:1.5;padding:24px 12px;}
+.page,.page *{font-family:var(--font,inherit);}
+*{box-sizing:border-box;margin:0;padding:0;}
+${css}
+</style></head><body>
+${clone.outerHTML}
+</body></html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='我的主页.html';a.click();
+}
+
+/* ============ 导出高清图片 ============ */
+function exportImage(ev){
+  if(typeof html2canvas==='undefined'){
+    alert('图片库尚未加载完成（可能是网络问题）。请稍等几秒后重试，或确认能正常联网。');
+    return;
+  }
+  const page=document.getElementById('page');
+  // 进入“拍照模式”：隐藏所有编辑控件、悬停描边、加号按钮
+  document.body.classList.add('shooting');
+  // 临时移除可编辑元素的轮廓焦点
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+
+  const btn=ev&&ev.target;const oldTxt=btn?btn.textContent:'';
+  if(btn){btn.textContent='⏳ 生成中…';btn.disabled=true;}
+
+  // 等一帧让样式生效
+  requestAnimationFrame(()=>{
+    const bg=getComputedStyle(document.body).backgroundColor;
+    html2canvas(page,{
+      scale:3,                 // 3 倍分辨率 = 高清
+      backgroundColor:bg,
+      useCORS:true,
+      logging:false,
+      windowWidth:page.scrollWidth,
+      windowHeight:page.scrollHeight
+    }).then(canvas=>{
+      canvas.toBlob(b=>{
+        const url=URL.createObjectURL(b);
+        const a=document.createElement('a');
+        a.href=url;a.download='我的主页.png';a.click();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+      },'image/png');
+    }).catch(err=>{
+      alert('图片生成失败：'+err.message+'\n（如果页面里用了网络图片，浏览器可能因跨域拦截，建议改用本地上传的图片。）');
+    }).finally(()=>{
+      document.body.classList.remove('shooting');
+      if(btn){btn.textContent=oldTxt;btn.disabled=false;}
+    });
+  });
+}
+</script>
+</body>
+</html>
